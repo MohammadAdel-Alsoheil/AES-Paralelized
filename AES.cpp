@@ -21,16 +21,12 @@ class AES{
         vector<vector<unsigned char>> ExpandedKey{WORDCOUNT, vector<unsigned char>(4)}; // 60 words or 240 bytes
         vector<vector<unsigned char>> state{4,vector<unsigned  char>(4)};
 
-        void addRoundKey(int roundNumber){ //correct
+        void addRoundKey(int roundNumber){
 
-            int start = roundNumber * 4; // 0 for 1st round 
+            int start = roundNumber * 4;
             for (int i = 0; i < 4; ++i) {
                 for (int j = 0; j < 4; ++j) {
-                    //cout << "state before XOR: " << hex << setw(2) << setfill('0') << (int)state[j][i] << "\n";
-                    //cout << "Expanded key before XOR: " << hex << setw(2) << setfill('0') << (int)ExpandedKey[start + i][j] << "\n";
-                    state[j][i] = state[j][i] ^ ExpandedKey[start +i][j]; //changed this to (j,i)
-                    //cout << "state after XOR: " << hex << setw(2) << setfill('0') << (int)state[j][i] << "\n\n";
-                    
+                    state[i][j] ^= ExpandedKey[start +i][j];
                 }
             }
         }
@@ -69,15 +65,15 @@ class AES{
             }
 
         }
-        std::string stateToHexString() {  // correct
+        std::string stateToHexString() {
             std::ostringstream hexStringStream;
 
-           
-            for(int i = 0;i<4;++i){
-                for(int j = 0;j<4;++j){
-                    hexStringStream << std::hex << std::setw(2) << std::setfill('0') << (int)state[j][i];
+            for (const auto& row : state) {
+                for (unsigned char val : row) {
+                    hexStringStream << std::hex << std::setw(2) << std::setfill('0') << (int)val;
                 }
             }
+
             return hexStringStream.str();
         }
 
@@ -97,22 +93,20 @@ class AES{
         return byteVector;
     }
 
-    
-
 
     public:
         
         AES(string plainText){
-            key = hexStringToVector("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
+            key = hexStringToVector("603deb1015ca71be2b73aef0857d77811f352c073b6108d72d9810a30914dff4");
             convertToStateMatrix(plainText);
 
         }
         string encrypt(){
-            KeyExpansion keyExpansion; 
+            KeyExpansion keyExpansion;
             SubBytes subBytes;
             ShiftRows shiftRows;
             MixColumns mixColumns;
-            keyExpansion.run(key,ExpandedKey); // correct
+            keyExpansion.run(key,ExpandedKey);
             addRoundKey(0);
 
             for(int i =1;i<=14;i++){
@@ -128,24 +122,12 @@ class AES{
             return stateToHexString();
         }
 
-        // for testing
-        void displayExpandedKey() const {
-            cout << "Expanded Key:\n";
-            for (int i = 0; i < ExpandedKey.size(); ++i) {
-                cout << "Word " << i << ": ";
-                for (unsigned char byte : ExpandedKey[i]) {
-                    cout << hex << (int)byte << " ";
-                }
-                cout << "\n";
-            }
-        }
-
         
 
 };
 
 int main(){
-    AES aes("00112233445566778899aabbccddeeff");
-    cout << aes.encrypt() <<"\n";
+    AES aes("6bc1bee22e409f96e93d7e117393172a");
+    cout << aes.encrypt();
     return 0;
 }
