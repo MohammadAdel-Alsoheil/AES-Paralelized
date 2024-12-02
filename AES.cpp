@@ -26,10 +26,7 @@ class AES{
             int start = roundNumber * 4; // 0 for 1st round 
             for (int i = 0; i < 4; ++i) {
                 for (int j = 0; j < 4; ++j) {
-                    //cout << "state before XOR: " << hex << setw(2) << setfill('0') << (int)state[j][i] << "\n";
-                    //cout << "Expanded key before XOR: " << hex << setw(2) << setfill('0') << (int)ExpandedKey[start + i][j] << "\n";
                     state[j][i] = state[j][i] ^ ExpandedKey[start +i][j]; //changed this to (j,i)
-                    //cout << "state after XOR: " << hex << setw(2) << setfill('0') << (int)state[j][i] << "\n\n";
                     
                 }
             }
@@ -47,16 +44,16 @@ class AES{
 
             return generatedKey;
         }
-        void convertToStateMatrix(const string& plaintext) {
-            std::vector<unsigned char> bytes;
+        void convertToStateMatrix(vector<unsigned char> bytes) {
+            // std::vector<unsigned char> bytes;
 
             // Convert the plaintext from hexadecimal string to bytes
-            for (size_t i = 0; i < plaintext.length(); i += 2) {
-                std::string byteString = plaintext.substr(i, 2); // Extract two characters at a time
-                unsigned int byte;
-                std::istringstream(byteString) >> std::hex >> byte;
-                bytes.push_back(static_cast<unsigned char>(byte));
-            }
+            // for (size_t i = 0; i < plaintext.length(); i += 2) {
+            //     std::string byteString = plaintext.substr(i, 2); // Extract two characters at a time
+            //     unsigned int byte;
+            //     std::istringstream(byteString) >> std::hex >> byte;
+            //     bytes.push_back(static_cast<unsigned char>(byte));
+            // }
 
             // Define the dimensions of the state matrix
             size_t rows = 4, cols = 4;
@@ -81,6 +78,18 @@ class AES{
             return hexStringStream.str();
         }
 
+        vector<unsigned char> stateToHexVector() {  
+            vector<unsigned char> bytes;
+
+           
+            for(int i = 0;i<4;++i){
+                for(int j = 0;j<4;++j){
+                    bytes.push_back(state[j][i]);
+                }
+            }
+            return bytes;
+        }
+
     std::vector<unsigned char> hexStringToVector(const std::string& hexString) {
         std::vector<unsigned char> byteVector;
 
@@ -101,13 +110,13 @@ class AES{
 
 
     public:
-        
-        AES(string plainText){
-            key = hexStringToVector("000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
-            convertToStateMatrix(plainText);
-
+        // I moved plainText, key from the constructor so that we can encrypt multiple data from same instance, using different keys
+        AES(){
+           
         }
-        string encrypt(){
+        vector<unsigned char> encrypt(vector<unsigned char> plainText, vector<unsigned char> givenKey){
+            key = givenKey;
+            convertToStateMatrix(plainText);
             KeyExpansion keyExpansion; 
             SubBytes subBytes;
             ShiftRows shiftRows;
@@ -125,27 +134,21 @@ class AES{
 
             }
 
-            return stateToHexString();
+            return stateToHexVector();
         }
 
         // for testing
-        void displayExpandedKey() const {
-            cout << "Expanded Key:\n";
-            for (int i = 0; i < ExpandedKey.size(); ++i) {
-                cout << "Word " << i << ": ";
-                for (unsigned char byte : ExpandedKey[i]) {
-                    cout << hex << (int)byte << " ";
-                }
-                cout << "\n";
-            }
-        }
+        // void displayExpandedKey() const {
+        //     cout << "Expanded Key:\n";
+        //     for (int i = 0; i < ExpandedKey.size(); ++i) {
+        //         cout << "Word " << i << ": ";
+        //         for (unsigned char byte : ExpandedKey[i]) {
+        //             cout << hex << (int)byte << " ";
+        //         }
+        //         cout << "\n";
+        //     }
+        // }
 
         
 
 };
-
-int main(){
-    AES aes("00112233445566778899aabbccddeeff");
-    cout << aes.encrypt() <<"\n";
-    return 0;
-}
