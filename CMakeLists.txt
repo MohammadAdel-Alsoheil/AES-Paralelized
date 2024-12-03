@@ -4,4 +4,4 @@ project(AES_Paralelized)
 set(CMAKE_CXX_STANDARD 14)
 
 add_executable(AES_Paralelized
-        AES.cpp SubBytes.cpp ShiftRows.cpp MixColumns.cpp KeyExpansion.cpp)
+        AES.cpp SubBytes.cpp ShiftRows.cpp MixColumns.cpp KeyExpansion.cpp GCM.cpp)

@@ -136,19 +136,4 @@ class AES{
 
             return stateToHexVector();
         }
-
-        // for testing
-        // void displayExpandedKey() const {
-        //     cout << "Expanded Key:\n";
-        //     for (int i = 0; i < ExpandedKey.size(); ++i) {
-        //         cout << "Word " << i << ": ";
-        //         for (unsigned char byte : ExpandedKey[i]) {
-        //             cout << hex << (int)byte << " ";
-        //         }
-        //         cout << "\n";
-        //     }
-        // }
-
-        
-
 };
