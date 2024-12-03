@@ -37,17 +37,25 @@ private:
         }
     }
 
-    vector<vector<unsigned char>> preparePlainText(const string& plainText) {
+    vector<vector<unsigned char>> preparePlainText(const vector<unsigned char>& plainText) {
         vector<vector<unsigned char>> blocks;
+
         for (size_t i = 0; i < plainText.size(); i += 16) {
+            // Create a block of 16 bytes initialized to 0x00 (for padding)
             vector<unsigned char> block(16, 0x00);
+            
+            // Copy up to 16 bytes from the plaintext into the block
             for (size_t j = 0; j < 16 && (i + j) < plainText.size(); ++j) {
                 block[j] = plainText[i + j];
             }
+            
+            // Add the block to the blocks vector
             blocks.push_back(block);
         }
+
         return blocks;
     }
+
 
     vector<unsigned char> ghash(const vector<unsigned char>& H, const vector<unsigned char>& data) {
         vector<unsigned char> X(16, 0x00);
@@ -112,9 +120,8 @@ private:
         }
 
 public:
-    GCM(const string& plainText, const string& key,  const string& IV,
-        const string&& AAD, size_t tagLength)
-        : key(hexStringToVector(key)), IV(hexStringToVector(IV)), AAD(hexStringToVector(AAD)), tagLength(tagLength) {
+    GCM(const vector<unsigned char> plainText, const vector<unsigned char> key,  const vector<unsigned char> IV, const vector<unsigned char> AAD, size_t tagLength)
+        : key(key), IV(IV), AAD(AAD), tagLength(tagLength) {
         states = preparePlainText(plainText);
     }
 
@@ -153,10 +160,45 @@ public:
 };
 
 int main(){
-    GCM gcm("hellotherehellotherehellothereAhmadAhmadAhmadAhmad","000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f","ba7313be2caadbe1469bea4a9a","a00f37eab080a3032e4882cf1f558134",16);
+    // Key (16 bytes)
+    vector<unsigned char> Key = {
+        0x4C, 0x97, 0x3D, 0xBC, 0x73, 0x64, 0x62, 0x16, 
+        0x74, 0xF8, 0xB5, 0xB8, 0x9B, 0x5C, 0x15, 0x51
+    };
+
+    // P (Plaintext, 64 bytes)
+    vector<unsigned char> P = {
+        0x1F, 0xCE, 0xD9, 0x21, 0x64, 0x90, 0xFB, 0x1C,
+        0x1A, 0x2C, 0xAA, 0x0F, 0xFE, 0x04, 0x07, 0xE5,
+        0x08, 0x00, 0x01, 0x01, 0x11, 0x21, 0x31, 0x41,
+        0x51, 0x61, 0x71, 0x81, 0x91, 0xA1, 0xB1, 0xC1,
+        0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24,
+        0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C,
+        0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34,
+        0x35, 0x36, 0x37, 0x38, 0x39, 0x33, 0xB3, 0xC3,
+        0x3D, 0x33, 0xF4, 0x04, 0x14, 0x24, 0x34, 0x44,
+        0x45, 0x46, 0x47, 0x48, 0x49, 0x00, 0x08
+    };
+
+    // IV (Initialization Vector, 12 bytes)
+    vector<unsigned char> IV = {
+        0x7A, 0xE8, 0xE2, 0xCA, 0x4E, 0xC5, 0x00, 0x01, 
+        0x2E, 0x58, 0x49, 0x5C
+    };
+
+    // A (Associated Data, 28 bytes)
+    vector<unsigned char> A = {
+        0x68, 0xF2, 0xE7, 0x76, 0x96, 0xC7, 0xAE, 0x8E,
+        0x2C, 0xA4, 0xEC, 0x58, 0x8B, 0x54, 0xD0, 0x00,
+        0x25, 0x84, 0x95, 0xC0
+    };
+
+
+    GCM gcm(P, Key, IV, A, 28);
     pair<string, string> res = gcm.GCM_Encrypt();
     cout << "Cipher Text: "+res.first << "\n";
     cout << "Added Tag: "+ res.second << "\n";
 
     return 0;
 }
+
