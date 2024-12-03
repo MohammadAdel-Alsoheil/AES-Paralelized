@@ -203,6 +203,8 @@ public:
     GCM(const vector<unsigned char> key,  const vector<unsigned char> IV, const vector<unsigned char> AAD)
         : key(key), IV(IV), AAD(AAD) {}
 
+
+    // for psuedo code reference https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
     pair<vector<unsigned char>, vector<unsigned char>> GCM_Encrypt(vector<unsigned char> plainText) {
         AES aes;
         // Prepare H
@@ -223,14 +225,14 @@ public:
 
 
         int u = (128*ceil(sizeOfCinBits/128)) - sizeOfCinBits;
-        //int v = (128*ceil(sizeofAADinBits/128)) - sizeofAADinBits; BROOO AAM TAATENE NEGATIVE
-        int v = (128 * ((sizeofAADinBits + 127) / 128)) - sizeofAADinBits;
+        //int v = (128*ceil(sizeofAADinBits/128)) - sizeofAADinBits; BROOO AAM TAATENE NEGATIVE 
+        int v = (128 * ((sizeofAADinBits + 127) / 128)) - sizeofAADinBits; // hay rule alternative mn GPT ma baarf iza sah
         
 
         vector<unsigned char> S = GHASH(padC(newC,u,v, sizeOfCinBits,sizeofAADinBits ), H);
         
 
-        vector<vector<unsigned char>> T = GCTR(IV,S);
+        vector<vector<unsigned char>> T = GCTR(IV,S); // here you can choose t Most Significant bits
         vector<unsigned char> newT = linearize(T);
         
 
