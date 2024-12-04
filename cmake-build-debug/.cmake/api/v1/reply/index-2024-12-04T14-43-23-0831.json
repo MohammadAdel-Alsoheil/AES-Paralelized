@@ -1,4 +1,7 @@
+<<<<<<< HEAD:cmake-build-debug/.cmake/api/v1/reply/index-2024-12-02T18-58-31-0470.json
 <<<<<<< HEAD
+=======
+>>>>>>> cf41d8f (refactor):cmake-build-debug/.cmake/api/v1/reply/index-2024-12-04T14-43-23-0831.json
 {
 	"cmake" : 
 	{
@@ -27,6 +30,7 @@
 	"objects" : 
 	[
 		{
+<<<<<<< HEAD:cmake-build-debug/.cmake/api/v1/reply/index-2024-12-02T18-58-31-0470.json
 <<<<<<< HEAD:cmake-build-debug/.cmake/api/v1/reply/index-2024-12-01T19-43-28-0152.json
 			"jsonFile" : "codemodel-v2-30fed06db0e1adeeffcd.json",
 =======
@@ -153,6 +157,9 @@
 	[
 		{
 			"jsonFile" : "codemodel-v2-ead4a80d57a92fe69b1a.json",
+=======
+			"jsonFile" : "codemodel-v2-97b9cc75b2ea50306eb7.json",
+>>>>>>> cf41d8f (refactor):cmake-build-debug/.cmake/api/v1/reply/index-2024-12-04T14-43-23-0831.json
 			"kind" : "codemodel",
 			"version" : 
 			{
@@ -212,7 +219,11 @@
 		},
 		"codemodel-v2" : 
 		{
+<<<<<<< HEAD:cmake-build-debug/.cmake/api/v1/reply/index-2024-12-02T18-58-31-0470.json
 			"jsonFile" : "codemodel-v2-ead4a80d57a92fe69b1a.json",
+=======
+			"jsonFile" : "codemodel-v2-97b9cc75b2ea50306eb7.json",
+>>>>>>> cf41d8f (refactor):cmake-build-debug/.cmake/api/v1/reply/index-2024-12-04T14-43-23-0831.json
 			"kind" : "codemodel",
 			"version" : 
 			{
@@ -232,4 +243,7 @@
 		}
 	}
 }
+<<<<<<< HEAD:cmake-build-debug/.cmake/api/v1/reply/index-2024-12-02T18-58-31-0470.json
 >>>>>>> a29f5f9 (updated GCM by following a trusted psuedo code)
+=======
+>>>>>>> cf41d8f (refactor):cmake-build-debug/.cmake/api/v1/reply/index-2024-12-04T14-43-23-0831.json

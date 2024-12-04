@@ -1,8 +1,11 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> efc32d8 (fix)
+=======
+>>>>>>> cf41d8f (refactor)
 "C:\Program Files\JetBrains\CLion 2023.1.5\bin\cmake\win\x64\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2023.1.5/bin/ninja/win/x64/ninja.exe" -G Ninja -S C:\ProgrammingProjects\AES-Paralelized -B C:\ProgrammingProjects\AES-Paralelized\cmake-build-debug
 -- The C compiler identification is GNU 11.2.0
 -- The CXX compiler identification is GNU 11.2.0
@@ -19,6 +22,7 @@
 -- Configuring done
 -- Generating done
 -- Build files have been written to: C:/ProgrammingProjects/AES-Paralelized/cmake-build-debug
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 "C:\Program Files\JetBrains\CLion 2023.1.5\bin\cmake\win\x64\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2023.1.5/bin/ninja/win/x64/ninja.exe" -G Ninja -S C:\ProgrammingProjects\AES-Paralelized -B C:\ProgrammingProjects\AES-Paralelized\cmake-build-debug
@@ -46,3 +50,5 @@
 -- Generating done
 -- Build files have been written to: C:/ProgrammingProjects/AES-Paralelized/cmake-build-debug
 >>>>>>> a29f5f9 (updated GCM by following a trusted psuedo code)
+=======
+>>>>>>> cf41d8f (refactor)
