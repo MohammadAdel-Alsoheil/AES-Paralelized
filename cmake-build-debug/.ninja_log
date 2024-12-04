@@ -1,5 +1,6 @@
 # ninja log v5
 <<<<<<< HEAD
+<<<<<<< HEAD
 29	1806	7547875047969573	CMakeFiles/AES_Paralelized.dir/MixColumns.cpp.obj	ac52b2ca0a61557e
 19	959	7547875039210809	CMakeFiles/AES_Paralelized.dir/SubBytes.cpp.obj	18a9920f7a74f2d0
 13	595	7548074531483816	CMakeFiles/AES_Paralelized.dir/KeyExpansion.cpp.obj	f33e7a0eb00fce02
@@ -74,36 +75,22 @@
 17	874	7550354687797021	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
 11	938	7550354688444976	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
 939	1163	7550354690658775	AES_Paralelized.exe	14b21576106914c7
+=======
+11	2052	7550413369859031	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
+7	1024	7550390375464885	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
+>>>>>>> bb0a0f7 (fix gitignore)
 10	549	7550359085387705	CMakeFiles/AES_Paralelized.dir/aes_stages/SubBytes.cpp.obj	76fb42159deaf3ed
 17	587	7550359085805586	CMakeFiles/AES_Paralelized.dir/aes_stages/ShiftRows.cpp.obj	8a61144dd9db5f25
+2053	2353	7550413372841125	AES_Paralelized.exe	14b21576106914c7
 38	594	7550359085815998	CMakeFiles/AES_Paralelized.dir/aes_stages/MixColumns.cpp.obj	300fabbae70016fb
 23	629	7550359086228731	CMakeFiles/AES_Paralelized.dir/aes_stages/KeyExpansion.cpp.obj	7471a90002bb7351
-4	666	7550359086530328	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
-47	1076	7550359090707224	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-31	1159	7550359091549409	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
-1159	1365	7550359093569247	AES_Paralelized.exe	14b21576106914c7
-4	660	7550359824711079	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-660	860	7550359826685275	AES_Paralelized.exe	14b21576106914c7
-7	1660	7550383368573312	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-1661	2352	7550383375451056	AES_Paralelized.exe	14b21576106914c7
-4	726	7550384332552095	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-728	957	7550384334832539	AES_Paralelized.exe	14b21576106914c7
-4	696	7550385105831489	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-697	907	7550385107876099	AES_Paralelized.exe	14b21576106914c7
-8	1613	7550385947325986	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
-33	2065	7550385951815941	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-20	2394	7550385955135948	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
-2395	2746	7550385958623157	AES_Paralelized.exe	14b21576106914c7
-4	707	7550387079740154	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
-16	1319	7550387085860124	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-10	1491	7550387087580123	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
-1492	1753	7550387090169739	AES_Paralelized.exe	14b21576106914c7
-4	842	7550388824929148	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
-19	1288	7550388829369889	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
-11	1481	7550388830849929	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
-1481	1814	7550388834599919	AES_Paralelized.exe	14b21576106914c7
-7	1024	7550390375464885	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
 25	1276	7550390377994940	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
+<<<<<<< HEAD
 17	1498	7550390380222482	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
 1499	1720	7550390382404625	AES_Paralelized.exe	14b21576106914c7
 >>>>>>> cf41d8f (refactor)
+=======
+22	1480	7550421447903554	CMakeFiles/AES_Paralelized.dir/Ghash.cpp.obj	59b0f00a9eb48c0a
+8	2570	7550421458800818	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
+2571	2975	7550421462854609	AES_Paralelized.exe	e9a020c3bebf05b6
+>>>>>>> bb0a0f7 (fix gitignore)

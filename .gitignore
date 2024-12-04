@@ -1,6 +1,16 @@
+<<<<<<< HEAD
 out
 AES.exe
 output
 cmake-build-debug
 .vscode
 .idea
+=======
+out
+AES.exe
+.vscode
+/cmake-build-debug
+output
+out.exe
+
+>>>>>>> bb0a0f7 (fix gitignore)

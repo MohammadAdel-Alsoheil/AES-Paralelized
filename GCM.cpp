@@ -3,9 +3,11 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
+#include <bitset>
 #include "AES.cpp"
-
+#include "Ghash.h"
 using namespace Utils;
+
 
 class GCM {
 private:
@@ -57,7 +59,7 @@ private:
         ByteVector Y0 = ByteVector(16, 0x00);
         vector<ByteVector> X = nest(val,16);
         for(int i = 0;i<X.size();++i){
-            Y0 = gf128_multiply(xorF(Y0, X[i]), H);
+            Y0 = Ghash::gf128Multiply(xorF(Y0, X[i]), H);
         }
         return Y0;
     }
@@ -103,33 +105,6 @@ private:
     }
 
 
-    ByteVector gf128_multiply(const ByteVector& X, const ByteVector& H) {
-
-        ByteVector result(16, 0x00);
-        ByteVector V = H;
-
-        for (int i = 0; i < 128; ++i) {
-            if ((X[i / 8] >> (7 - (i % 8))) & 1) {
-                for (int j = 0; j < 16; ++j) {
-                    result[j] ^= V[j];
-                }
-            }
-
-            bool carry = V[0] & 0x80;
-            for (int j = 0; j < 15; ++j) {
-                V[j] = (V[j] << 1) | (V[j + 1] >> 7);
-            }
-            V[15] <<= 1;
-
-            if (carry) {
-                V[15] ^= 0xE1;
-            }
-        }
-
-        return result;
-    }
-
-
 public:
 
 
@@ -161,7 +136,8 @@ public:
 
 
         ByteVector S = GHASH(padC(newC,u,v, sizeOfCinBits,sizeofAADinBits ), H);
-        vector<ByteVector> T = GCTR(IV,S);
+        prepareCounter(J0, this->IV);
+        vector<ByteVector> T = GCTR(J0,S);
         ByteVector newT = flatten(T);
 
 
