@@ -103,6 +103,12 @@ build CMakeFiles/AES_Paralelized.dir/GCM_MPI.cpp.obj: CXX_COMPILER__AES_Paraleli
   OBJECT_DIR = CMakeFiles\AES_Paralelized.dir
   OBJECT_FILE_DIR = CMakeFiles\AES_Paralelized.dir
 
+build CMakeFiles/AES_Paralelized.dir/GCM_OpenMP.cpp.obj: CXX_COMPILER__AES_Paralelized_Debug C$:/ProgrammingProjects/AES-Paralelized/GCM_OpenMP.cpp || cmake_object_order_depends_target_AES_Paralelized
+  DEP_FILE = CMakeFiles\AES_Paralelized.dir\GCM_OpenMP.cpp.obj.d
+  FLAGS = -g -fdiagnostics-color=always -std=gnu++14
+  OBJECT_DIR = CMakeFiles\AES_Paralelized.dir
+  OBJECT_FILE_DIR = CMakeFiles\AES_Paralelized.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target AES_Paralelized
@@ -111,7 +117,7 @@ build CMakeFiles/AES_Paralelized.dir/GCM_MPI.cpp.obj: CXX_COMPILER__AES_Paraleli
 #############################################
 # Link the executable AES_Paralelized.exe
 
-build AES_Paralelized.exe: CXX_EXECUTABLE_LINKER__AES_Paralelized_Debug CMakeFiles/AES_Paralelized.dir/AES.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/SubBytes.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/ShiftRows.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/MixColumns.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/KeyExpansion.cpp.obj CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj CMakeFiles/AES_Paralelized.dir/Ghash.cpp.obj CMakeFiles/AES_Paralelized.dir/GCM_MPI.cpp.obj
+build AES_Paralelized.exe: CXX_EXECUTABLE_LINKER__AES_Paralelized_Debug CMakeFiles/AES_Paralelized.dir/AES.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/SubBytes.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/ShiftRows.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/MixColumns.cpp.obj CMakeFiles/AES_Paralelized.dir/aes_stages/KeyExpansion.cpp.obj CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj CMakeFiles/AES_Paralelized.dir/Ghash.cpp.obj CMakeFiles/AES_Paralelized.dir/GCM_MPI.cpp.obj CMakeFiles/AES_Paralelized.dir/GCM_OpenMP.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\AES_Paralelized.dir

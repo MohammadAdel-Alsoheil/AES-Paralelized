@@ -183,8 +183,8 @@ int main(){
     pair<ByteVector, ByteVector> res = gcm.encrypt(Key, IV, A,P);
     auto end_time = std::chrono::high_resolution_clock::now();
 
-//    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
-//    cout << "Added Tag: " + bytesToHex(res.second) << "\n";
+    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
+    cout << "Added Tag: " + bytesToHex(res.second) << "\n";
     std::chrono::duration<double> elapsed_time = end_time - start_time;
 
     // Print result
