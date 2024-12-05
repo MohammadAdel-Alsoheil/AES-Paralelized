@@ -1,3 +1,0 @@
-C:/Users/96176/Desktop/LAU/Parallel/project-code/cmake-build-debug/CMakeFiles/AES_Paralelized.dir
-C:/Users/96176/Desktop/LAU/Parallel/project-code/cmake-build-debug/CMakeFiles/edit_cache.dir
-C:/Users/96176/Desktop/LAU/Parallel/project-code/cmake-build-debug/CMakeFiles/rebuild_cache.dir
