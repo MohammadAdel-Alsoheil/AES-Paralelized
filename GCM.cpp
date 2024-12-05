@@ -3,9 +3,10 @@
 #include <cmath>
 #include <string>
 #include <stdexcept>
-#include <bitset>
 #include "AES.cpp"
 #include "Ghash.h"
+#include <chrono>
+
 using namespace Utils;
 
 
@@ -40,13 +41,13 @@ private:
 
 
     vector<ByteVector> GCTR(ByteVector ICB, ByteVector val){
-        AES aes;
+        AES aes(key);
         ByteVector CB = ICB;
         vector<ByteVector> X = nest(val,16);
         vector<ByteVector> res;
         for(int i = 0;i<X.size();++i){
             ByteVector Y;
-            Y = xorF(aes.encrypt(CB, key), X[i]);
+            Y = xorF(aes.encrypt(CB), X[i]);
             incrementCounter(CB);
             res.push_back(Y);
         }
@@ -114,9 +115,9 @@ public:
         this->IV = IV;
         this->key = key;
 
-        AES aes;
+        AES aes(key);
 
-        ByteVector H = aes.encrypt(ByteVector(16, 0x00), key);
+        ByteVector H = aes.encrypt(ByteVector(16, 0x00));
 
 
         ByteVector J0;
@@ -157,16 +158,11 @@ int main(){
             0x1A, 0x2C, 0xAA, 0x0F, 0xFE, 0x04, 0x07, 0xE5
     };
     // P (Plaintext, 64 bytes)
-    ByteVector P = {
-            0x08, 0x00, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14,
-            0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
-            0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24,
-            0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C,
-            0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34,
-            0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C,
-            0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44,
-            0x45, 0x46, 0x47, 0x48, 0x49, 0x00, 0x08
-    };
+    ByteVector P = {};
+
+    for(int i =0;i<50000;i++){
+        P.push_back(0x00);
+    }
 
     // IV (Initialization Vector, 12 bytes)
     ByteVector IV = {
@@ -181,11 +177,17 @@ int main(){
             0x2E, 0x58, 0x49, 0x5C
     };
 
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     GCM gcm;
     pair<ByteVector, ByteVector> res = gcm.encrypt(Key, IV, A,P);
-    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
-    cout << "Added Tag: " + bytesToHex(res.second) << "\n";
+    auto end_time = std::chrono::high_resolution_clock::now();
 
+//    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
+//    cout << "Added Tag: " + bytesToHex(res.second) << "\n";
+    std::chrono::duration<double> elapsed_time = end_time - start_time;
+
+    // Print result
+    std::cout << "Elapsed Time: " << elapsed_time.count() << " seconds" << std::endl;
     return 0;
 }

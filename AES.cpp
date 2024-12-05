@@ -55,15 +55,17 @@ private:
     }
 
 public:
-
-    ByteVector encrypt(ByteVector plainText, ByteVector givenKey){
+    AES(ByteVector givenKey){
         key = givenKey;
-        convertToStateMatrix(plainText);
         KeyExpansion keyExpansion;
+        keyExpansion.run(key,ExpandedKey); // instead of calculating them everytime
+    }
+
+    ByteVector encrypt(ByteVector plainText){
+        convertToStateMatrix(plainText);
         SubBytes subBytes;
         ShiftRows shiftRows;
         MixColumns mixColumns;
-        keyExpansion.run(key,ExpandedKey); // correct
         addRoundKey(0);
 
         for(int i =1;i<=14;i++){
