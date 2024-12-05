@@ -38,30 +38,171 @@ private:
         }
     }
 
+    void PincrementCounter(unsigned char* counter){
+        for (int i = 15; i >= 12; --i) { // Last 4 bytes represent the counter
+            if (++counter[i] != 0) {
+                break; // Stop incrementing if no overflow
+            }
+        }
+    }
 
-    vector<ByteVector> GCTR(ByteVector ICB, ByteVector val){
-        AES aes;
-        ByteVector CB = ICB;
+    ByteVector ArrayToByteVector(unsigned char A[]){
+        ByteVector res;
+        int size = sizeof(arr) / sizeof(arr[0]);
+        for(int i = 0;i<size;++i){
+            res.push_back(A[i]);
+        }
+        return res;
+    }
+
+
+    vector<ByteVector> GCTR(ByteVector ICB, ByteVector val) {
+        
         vector<ByteVector> X = nest(val,16);
-        vector<ByteVector> res;
-        for(int i = 0;i<X.size();++i){
-            ByteVector Y;
-            Y = xorF(aes.encrypt(CB, key), X[i]);
-            incrementCounter(CB);
-            res.push_back(Y);
+        ByteVector result;  
+
+        // Allocate memory on the device
+        unsigned char *d_val, *d_ICB, *d_result, *d_key;
+        cudaMalloc(&d_val, val.size());
+        cudaMalloc(&d_ICB, ICB.size());
+        cudaMalloc(&d_result, result.size());
+        cudaMalloc(&d_key, key.size());
+
+        // Copy data to the device
+        cudaMemcpy(d_val, val.data(), val.size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_ICB, ICB.data(), ICB.size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_key, key.data(), key.size(), cudaMemcpyHostToDevice);
+
+        // Launch the kernel
+        int threadsPerBlock = 256;
+        int numBlocksPerGrid = (numBlocks + threadsPerBlock - 1) / threadsPerBlock;
+        GCTRKernel<<<numBlocksPerGrid, threadsPerBlock>>>(d_ICB, d_val, numBlocks, d_result, d_key);
+
+        // Copy the result back to the host
+        cudaMemcpy(result.data(), d_result, result.size(), cudaMemcpyDeviceToHost);
+
+        // Free device memory
+        cudaFree(d_val);
+        cudaFree(d_ICB);
+        cudaFree(d_result);
+        cudaFree(d_key);
+
+        // Convert the flat result into a vector of ByteVectors
+        vector<ByteVector> res(numBlocks, ByteVector(blockSize));
+        for (int i = 0; i < numBlocks; ++i) {
+            std::copy(result.begin() + i * blockSize, result.begin() + (i + 1) * blockSize, res[i].begin());
         }
 
         return res;
-
     }
 
-    ByteVector GHASH(ByteVector val, ByteVector H){
-        ByteVector Y0 = ByteVector(16, 0x00);
-        vector<ByteVector> X = nest(val,16);
-        for(int i = 0;i<X.size();++i){
-            Y0 = Ghash::gf128Multiply(xorF(Y0, X[i]), H);
+
+    __global__ void GCTRKernel(const unsigned char* ICB, const unsigned char* val, int numBlocks, const unsigned char* result){
+        
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        if (idx < numBlocks) {
+
+            unsigned char counter[16];
+            memcpy(counter, ICB, 16);
+          
+            // Encrypt the counter
+            unsigned char encryptedCounter[16];
+            AES aes;  
+            ByteVector calKey = aes.encrypt( ArrayToByteVector(counter), key);
+            ByteVector X = ArrayToByteVector(val);
+            ByteVector Partialres =  xorF(X,calKey);
+
+            unsigned char *PartialresCopy;
+            cudaMalloc(&PartialresCopy, Partialres.size());
+            cudaMemcpy(Partialres.data(), PartialresCopy, result.size(), cudaMemcpyDeviceToHost);
+
+            //increment counter
+            for(int k = 0;k<idx+1;++k){
+                for (int i = 0; i < 4; ++i) {
+                    counter[15 - i] += idx & 0xFF;  // Increment based on thread index
+                }
+            }
+
+             cudaFree(PartialresCopy);
+            
         }
-        return Y0;
+    }
+
+    __global__ void GHASHKernel(const unsigned char* val, int numBlocks, const unsigned char* H, unsigned char* result) {
+        extern __shared__ unsigned char sharedMemory[];
+
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+        // Shared memory for intermediate results
+        unsigned char* sharedY = &sharedMemory[threadIdx.x * 16];
+
+        // Each thread processes one block
+        if (idx < numBlocks) {
+            const unsigned char* block = &val[idx * 16];
+            unsigned char intermediate[16] = {0};
+
+            // XOR with current Y
+            for (int i = 0; i < 16; ++i) {
+                intermediate[i] = sharedY[i] ^ block[i];
+            }
+
+            // Perform GF(128) multiplication
+            Ghash::gf128Multiply(intermediate, H, sharedY);  // Example GF(128) multiplication
+        }
+
+        // Synchronize all threads in the block
+        __syncthreads();
+
+        // Reduction: Combine results into a single Y0
+        for (int offset = 1; offset < blockDim.x; offset *= 2) {
+            if (threadIdx.x % (2 * offset) == 0 && idx + offset < numBlocks) {
+                for (int i = 0; i < 16; ++i) {
+                    sharedY[i] ^= sharedY[i + offset * 16];
+                }
+            }
+            __syncthreads();
+        }
+
+        // Write the final result for this block back to global memory
+        if (threadIdx.x == 0) {
+            memcpy(result, sharedY, 16);
+        }
+    }
+
+
+    ByteVector GHASH(ByteVector val, ByteVector H) {
+        int blockSize = 16;
+        int numBlocks = (val.size() + blockSize - 1) / blockSize;
+
+        // Prepare input
+        ByteVector result(blockSize, 0x00);
+
+        // Allocate device memory
+        unsigned char *d_val, *d_H, *d_result;
+        cudaMalloc(&d_val, val.size());
+        cudaMalloc(&d_H, H.size());
+        cudaMalloc(&d_result, blockSize);
+
+        // Copy data to device
+        cudaMemcpy(d_val, val.data(), val.size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(d_H, H.data(), H.size(), cudaMemcpyHostToDevice);
+
+        // Launch the kernel
+        int threadsPerBlock = 256;
+        int sharedMemSize = threadsPerBlock * blockSize;
+        int blocksPerGrid = (numBlocks + threadsPerBlock - 1) / threadsPerBlock;
+        GHASHKernel<<<blocksPerGrid, threadsPerBlock, sharedMemSize>>>(d_val, numBlocks, d_H, d_result);
+
+        // Copy result back to host
+        cudaMemcpy(result.data(), d_result, blockSize, cudaMemcpyDeviceToHost);
+
+        // Free device memory
+        cudaFree(d_val);
+        cudaFree(d_H);
+        cudaFree(d_result);
+
+        return result;
     }
 
     ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
@@ -109,7 +250,7 @@ public:
 
 
     // for psuedo code reference https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
-    __global__ pair<ByteVector, ByteVector> encrypt(const ByteVector key,  const ByteVector IV, const ByteVector AAD,ByteVector P) {
+     pair<ByteVector, ByteVector> encrypt(const ByteVector key,  const ByteVector IV, const ByteVector AAD,ByteVector P) {
         this->AAD= AAD;
         this->IV = IV;
         this->key = key;
@@ -143,6 +284,26 @@ public:
 
 
         return { newC, newT };
+    }
+
+    __global__ void encryptKernel(ByteVector key, ByteVector IV, ByteVector AAD, ByteVector P, ByteVector* C, ByteVector* T){
+        int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
+        __shared__ ByteVector H;
+        __shared__ vector<ByteVector>;
+        __shared__ ByteVector J0;
+
+        if(idx==0){
+            AES aes;
+            H = aes.encrypt(ByteVector(16, 0x00), key); //prepare H
+            prepareCounter(J0, this->IV);
+        }
+        __syncthreads();
+
+            // Each thread works on one block of the plaintext P
+            if (idx < P.size() / 16) {
+            
+            }
     }
 
 
