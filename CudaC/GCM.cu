@@ -8,9 +8,11 @@
 #include <cstring>
 #include "Utils.h"
 #include "Ghash.h"
+#include <chrono>
 
 
 using ByteVector = std::vector<unsigned char>;
+using namespace chrono;
 
 class GCM {
 private:
@@ -186,9 +188,118 @@ public:
         return std::make_pair(encryptedText, T);
     }
 
+    ByteVector decrypt(uint8_t *key, uint8_t *IV, ByteVector AAD, int AADsize, uint8_t *cipherText,
+                       int cipherTextSize, ByteVector T) {
+        // Key and IV setup
 
+        memcpy(this->key, key, 32);
+        memcpy(this->IV, IV, 12);
+        this->AAD = AAD;
+        int numAESBlocks = (cipherTextSize + 15) / 16; // similar to ceil(pSize/16) but better efficiency
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (numAESBlocks + threadsPerBlock - 1) / threadsPerBlock;
+        int AddedPaddingSize = cipherTextSize;
+        // Device memory
+        uint8_t *d_ciphertext, *d_result, *d_ICB, *d_key, *d_roundkeys;
+        cudaMalloc(&d_ciphertext, cipherTextSize);
+        cudaMalloc(&d_result, numAESBlocks * 16);
+        cudaMalloc(&d_ICB, 16);
+        cudaMalloc(&d_key, 32);
+        cudaMallocManaged(&d_roundkeys, AES_ROUND_KEY_SIZE_256);
+
+        // Key schedule
+        uint8_t roundkeys[AES_ROUND_KEY_SIZE_256];
+        aes_key_schedule_256(key, roundkeys);
+
+        //prepare H
+        uint8_t H[16];
+        uint8_t zeros[16] = {
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+        };
+        aes_encrypt_256(roundkeys, zeros, H); // correct
+
+
+        // Copy data to device
+        cudaMemcpy(d_ciphertext, cipherText, cipherTextSize, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_key, key, 32, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_roundkeys, roundkeys, AES_ROUND_KEY_SIZE_256, cudaMemcpyHostToDevice);
+        // Prepare counter
+        uint8_t ICB[16];
+        prepareCounter(ICB, IV);
+        incrementCounter(ICB);
+        cudaMemcpy(d_ICB, ICB, 16, cudaMemcpyHostToDevice);
+
+
+        // Launch GCTR kernel for plaintext encryption
+        GCTRKernel<<<blocksPerGrid, threadsPerBlock>>>(d_ICB, d_ciphertext, numAESBlocks, d_result, d_key, d_roundkeys);
+        cudaDeviceSynchronize();
+
+        // Copy encrypted result back to host
+        ByteVector plainText(numAESBlocks * 16);
+        cudaMemcpy(plainText.data(), d_result, numAESBlocks * 16, cudaMemcpyDeviceToHost);
+
+        while (AddedPaddingSize < plainText.size()) {
+            plainText.pop_back();
+            AddedPaddingSize++;
+        }
+
+
+        // Calculate sizes in bits
+        int sizeOfCinBits = cipherTextSize * 8;
+        int sizeOfAADinBits = AADsize * 8;
+
+        int u = (128 * ceil((double) sizeOfCinBits / 128)) - sizeOfCinBits;
+        int v = (128 * ceil((double) sizeOfAADinBits / 128)) - sizeOfAADinBits;
+
+
+        // Pad AAD and ciphertext
+        ByteVector Hv;
+        for (int i = 0; i < 16; ++i) {
+            Hv.push_back(H[i]);
+        }
+        // copy cipherText to a ByteVector
+        ByteVector encryptedText;
+        for (int i = 0; i < cipherTextSize; ++i) {
+            encryptedText.push_back(cipherText[i]);
+        }
+
+        ByteVector padded = padC(encryptedText, u, v, sizeOfCinBits, sizeOfAADinBits); //correct // checked
+
+        ByteVector S = GHASH(padded, Hv);
+
+
+        uint8_t *d_S;
+        cudaMalloc(&d_S, 16);
+        cudaMemcpy(d_S, S.data(), 16, cudaMemcpyHostToDevice);
+
+        // Launch GCTR kernel for tag generation
+        prepareCounter(ICB, IV);
+        cudaMemcpy(d_ICB, ICB, 16, cudaMemcpyHostToDevice);
+        ByteVector Tprime(16);
+        GCTRKernel<<<blocksPerGrid, threadsPerBlock>>>(d_ICB, d_S, 1, d_result, d_key, d_roundkeys);
+
+        // Copy tag back to host
+        cudaMemcpy(Tprime.data(), d_result, 16, cudaMemcpyDeviceToHost);
+
+        for (int i = 0; i < 16; ++i) {
+            if (T[i] != Tprime[i]) {
+                throw invalid_argument("There is no integrity between T and Tprime");
+            }
+        }
+
+
+        // Free device memory
+        cudaFree(d_ciphertext);
+        cudaFree(d_result);
+        cudaFree(d_ICB);
+        cudaFree(d_key);
+        cudaFree(d_roundkeys);
+        cudaFree(d_S);
+
+
+        return plainText;
+    }
 };
-
 
 
 int main() {
@@ -228,10 +339,27 @@ int main() {
 
     GCM gcm;
 
+    ByteVector plainText;
+    for (int i = 0; i < Psize; ++i) {
+        plainText.push_back(P[i]);
+    }
+    auto startEnc = high_resolution_clock::now(); // start time
+    cout << "Plaintext: " << Utils::bytesToHex(plainText) << endl;
     pair<ByteVector, ByteVector> ciphertext = gcm.encrypt(Key, IV, A, Asize, P, Psize);
+    auto endEnc = high_resolution_clock::now(); // end time
+    auto durationEnc = duration_cast<microseconds>(endEnc - startEnc).count();
     std::cout << "CipherText: " << Utils::bytesToHex(ciphertext.first) << std::endl;
     std::cout << "Tag: " << Utils::bytesToHex(ciphertext.second) << std::endl;
-
+    std::cout << "Encryption of a " + std::to_string(Psize) + " bytes took "
+            + std::to_string(durationEnc) + " microseconds" << std::endl;
+    auto startDec = high_resolution_clock::now(); // start time
+    ByteVector deciphered = gcm.decrypt(Key, IV, A, A.size(), ciphertext.first.data(), ciphertext.first.size(),
+                                        ciphertext.second);
+    auto endDec = high_resolution_clock::now(); // end time
+    auto durationDec = duration_cast<microseconds>(endDec - startDec).count();
+    cout << "Decrypted Text: " + Utils::bytesToHex(deciphered) << "\n";
+    std::cout << "Decryption of a " + std::to_string(ciphertext.first.size()) + " bytes took "
+            + std::to_string(durationDec) + " microseconds" << std::endl;
 
     return 0;
 }
