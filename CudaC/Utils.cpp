@@ -7,8 +7,8 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 #include <iomanip>
-#include "AES.cu"
 using namespace std;
 
 namespace Utils{
@@ -22,7 +22,7 @@ namespace Utils{
 
     ByteVector xorF(const ByteVector &A, const ByteVector &B) {
         ByteVector C(A.size());
-        transform(A.begin(), A.end(), B.begin(), C.begin(), [](unsigned char a, unsigned char b) {
+        std::transform(A.begin(), A.end(), B.begin(), C.begin(), [](unsigned char a, unsigned char b) {
             return a ^ b;
         });
         return C;
