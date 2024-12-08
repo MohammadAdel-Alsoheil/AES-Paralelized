@@ -78,9 +78,9 @@ private:
         // Initialize the tag (Y0 = 0)
         ByteVector tag(16, 0x00);
 
-        for (int i = 0; i <=X.size(); ++i) { // Process from left to right
+        for (int i = 0; i <X.size(); ++i) { // Process from left to right
             // Multiply the current block by the current power of H
-            ByteVector term =  Ghash::gf128Multiply(X[i], gf128Power(H,i));
+            ByteVector term =  Ghash::gf128Multiply(X[i], gf128Power(H,X.size()-i));
 
             // XOR the result into the tag
             tag = xorF(tag, term);
@@ -164,11 +164,11 @@ public:
         ByteVector S = GHASH(padC(newC,u,v, sizeOfCinBits,sizeofAADinBits ), H);
         prepareCounter(J0, this->IV);
         vector<ByteVector> T = GCTR(J0,S);
-//        ByteVector newT = flatten(S);
+        ByteVector newT = flatten(T);
 
 
 
-        return { newC, S };
+        return { newC, newT };
     }
 
 
