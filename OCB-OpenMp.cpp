@@ -18,7 +18,6 @@ class OCB {
 private:
     ByteVector key; // 256 bits
     ByteVector Nonce; //128 bits
-    vector<ByteVector> greyCodes;
 
     int ntz(int value) {
         if (value == 0) return sizeof(int) * 8; // Special case: All bits are zero
@@ -96,18 +95,21 @@ public:
         ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16), key);
         ByteVector R = aes.encrypt(xorF(Nonce, L), key);
 
+        vector<ByteVector> greyCodes(m);
+        vector<ByteVector> C(m); // cipherText
+        vector<ByteVector> Z(m);
+        greyCodes[0] = L;
+        Z[0] = xorF(greyCodes[0], R);
 
-        vector<ByteVector> C; // cipherText
-        vector<ByteVector> Z;
-        greyCodes.push_back(L);
-        Z.push_back(xorF(greyCodes[0], R));
+        #pragma omp parallel for
         for (int i = 1; i < m; i++) {
-            greyCodes.push_back(multGreyCode(greyCodes[i - 1], L, i));
-            Z.push_back(xorF(greyCodes[i], R));
+            greyCodes[i] = multGreyCode(greyCodes[i - 1], L, i);
+            Z[i] = xorF(greyCodes[i], R);
         }
 
+        #pragma omp parallel for
         for (int i = 0; i < m - 1; i++) {
-            C.push_back(xorF(aes.encrypt(xorF(preparedM[i], Z[i]), key), Z[i]));
+            C[i] = xorF(aes.encrypt(xorF(preparedM[i], Z[i]), key), Z[i]);
         }
 
         ByteVector Xm = xorF(xorF(encodeLength(preparedM[m - 1].size() * 8), multByInverseX(L)), Z[m - 1]);
@@ -117,10 +119,11 @@ public:
             Cm.push_back(preparedM[m - 1][i] ^ Ym[i]);
         }
 
-        C.push_back(Cm);
+        C[m-1] = Cm;
 
         // Compute the Checksum
         ByteVector Checksum(16, 0x00);
+        #pragma omp parallel for reduction(xor:Checksum)
         for (int i = 0; i < m; i++) {
             Checksum = xorF(Checksum, preparedM[i]);
         }
@@ -146,7 +149,7 @@ public:
         }
         this->Nonce = Nonce;
         this->key = key;
-        greyCodes.clear();
+
 
         vector<ByteVector> preparedC = DivideBlocks(C, 16);
         int m = (C.size() + 15) / 16;
@@ -155,17 +158,19 @@ public:
         ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16), key);
         ByteVector R = aes.encrypt(xorF(Nonce, L), key);
 
-        vector<ByteVector> M; // cipherText
-        vector<ByteVector> Z;
-        greyCodes.push_back(L);
-        Z.push_back(xorF(greyCodes[0], R));
+        vector<ByteVector> greyCodes(m);
+        vector<ByteVector> M(m); // cipherText
+        vector<ByteVector> Z(m);
+        greyCodes[0]=L;
+        Z[0] = xorF(greyCodes[0], R);
+        #pragma omp parallel for
         for (int i = 1; i < m; i++) {
-            greyCodes.push_back(multGreyCode(greyCodes[i - 1], L, i));
-            Z.push_back(xorF(greyCodes[i], R));
+            greyCodes[i] = multGreyCode(greyCodes[i - 1], L, i);
+            Z[i] = xorF(greyCodes[i], R);
         }
-
+        #pragma omp parallel for
         for (int i = 0; i < m - 1; i++) {
-            M.push_back(xorF(aes.decrypt(xorF(preparedC[i], Z[i]), key), Z[i]));
+            M[i] = xorF(aes.decrypt(xorF(preparedC[i], Z[i]), key), Z[i]);
         }
 
         ByteVector Xm = xorF(xorF(encodeLength(preparedC[m - 1].size() * 8), multByInverseX(L)), Z[m - 1]);
@@ -174,9 +179,11 @@ public:
         for (int i = 0; i < preparedC[m - 1].size(); i++) {
             Mm.push_back(preparedC[m - 1][i] ^ Ym[i]);
         }
-        M.push_back(Mm);
+        M[m-1] =  Mm;
+
 
         ByteVector Checksum(16, 0x00);
+
         for (int i = 0; i < m; i++) {
             Checksum = xorF(Checksum, M[i]);
         }
@@ -185,9 +192,10 @@ public:
         ByteVector Tprime = aes.encrypt(xorF(Checksum, Z[m - 1]), key);
         Tprime.resize(16); // Truncate to the desired tag length
 
-        // Concatenate ciphertext blocks
+
         for (int i = 0; i < 16; i++) {
             if (T[i] != Tprime[i]) {
+                //cout << "T prime :" << Utils::bytesToHex(Tprime) << " " << Tprime[i] << endl;
                 throw std::invalid_argument("No integrity between messages");
             }
         }
@@ -195,10 +203,6 @@ public:
         return flatten(M);
     }
 };
-
-// 08000f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748490008
-// 08000f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c47516637c11adefb4194d54e0ae7fa
-// 009391b1249a57519eb8efbd91884aee40a4eba4d2d8b88f661f872f9c3dfd656097476fa8e4697572a3df97c52c5f0279310758893200d4f0023b0175b587
 
 int main() {
     OCB ocb;
