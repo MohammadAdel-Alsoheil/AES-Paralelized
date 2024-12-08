@@ -63,29 +63,61 @@
 //        }
 //        return res;
 //    }
-//
-//
-//    ByteVector GHASH(ByteVector val, ByteVector H){
-//        ByteVector Y0 = ByteVector(16, 0x00);
-//        vector<ByteVector> X = nest(val,16);
-//#pragma omp parallel
-//        {
-//            ByteVector local_Y0(16, 0x00); // Each thread's intermediate result
-//
-//#pragma omp for
-//            for (int i = 0; i < X.size(); ++i) {
-//                local_Y0 = Ghash::gf128Multiply(xorF(local_Y0, X[i]), H);
-//            }
-//
-//            // Combine thread-local results into the global result
-//#pragma omp critical
-//            {
-//                Y0 = xorF(Y0, local_Y0);
-//            }
+//    ByteVector gf128Power(ByteVector H, int power) {
+//        if (power == 0) {
+//            // Return the identity element in GF(2^128)
+//            ByteVector identity = ByteVector(16, 0x00);
+//            identity[15] = 0x01;
+//            return identity;
 //        }
-//        return Y0;
+//
+//        ByteVector result = H; // Start with H
+//        for (int i = 1; i < power; ++i) {
+//            result = Ghash::gf128Multiply(result, H);
+//        }
+//        return result;
 //    }
 //
+//// Parallelized GHASH
+//    ByteVector GHASH(ByteVector val, ByteVector H, int degree_of_parallelism = 4) {
+//        vector<ByteVector> X = nest(val, 16); // Break the input into 16-byte blocks
+//        int n = X.size();
+//
+//        // Partial tags for each parallel stream
+//        std::vector<ByteVector> partialTags(degree_of_parallelism, ByteVector(16, 0x00));
+//
+//        // Compute j = H^degree_of_parallelism for scaling
+//        ByteVector j = gf128Power(H, degree_of_parallelism);
+//
+//        // Parallel computation of independent streams
+//#pragma omp parallel for num_threads(degree_of_parallelism)
+//        for (int t = 0; t < degree_of_parallelism; ++t) {
+//            ByteVector localTag = ByteVector(16, 0x00);
+//            ByteVector currentH = gf128Power(j, 0); // Initial power of H for this stream
+//            cout << Utils::bytesToHex(currentH) << endl;
+//            int pow =1;
+//            for (int i = t; i < n; i += degree_of_parallelism) {
+//                localTag = xorF(localTag, Ghash::gf128Multiply(X[i], currentH));
+//                currentH =gf128Power(j, pow++);
+//            }
+//            partialTags[t] = localTag;
+//        }
+//
+//        // Combine partial results
+//        ByteVector finalTag = ByteVector(16, 0x00);
+//        ByteVector currentJ = ByteVector(16, 0x00); // Start with j^0 = 1
+//
+//        cout << Utils::bytesToHex(Ghash::gf128Multiply(H,Ghash::gf128Multiply(H,H)))  <<   endl;
+//
+//        for (int t = 0; t < degree_of_parallelism; ++t) {
+//            cout << endl<< Utils::bytesToHex(gf128Power(H,t)) << " " << t <<  endl;
+//
+//            finalTag = xorF(finalTag, Ghash::gf128Multiply(partialTags[t], gf128Power(j,t)));
+//        }
+//
+//
+//        return finalTag;
+//    }
 //    ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
 //        ByteVector res;
 //
@@ -182,7 +214,7 @@
 //    // P (Plaintext, 64 bytes)
 //    ByteVector P = {};
 //
-//    for(int i =0;i<50000;i++){
+//    for(int i =0;i<10;i++){
 //        P.push_back(0x00);
 //    }
 //
