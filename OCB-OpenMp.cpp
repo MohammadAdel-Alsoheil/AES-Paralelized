@@ -80,6 +80,10 @@ private:
         return blocks;
     }
 
+#pragma omp declare reduction(xorReduction : ByteVector : \
+omp_out = xorF(omp_out, omp_in)) initializer(omp_priv = ByteVector(16, 0x00))
+
+
 public:
     pair<ByteVector, ByteVector> encrypt(ByteVector key, ByteVector Nonce, ByteVector M) {
         if (Nonce.size() != 16) {
@@ -123,7 +127,7 @@ public:
 
         // Compute the Checksum
         ByteVector Checksum(16, 0x00);
-        #pragma omp parallel for reduction(xor:Checksum)
+        #pragma omp parallel for reduction(xorReduction:Checksum)
         for (int i = 0; i < m; i++) {
             Checksum = xorF(Checksum, preparedM[i]);
         }
@@ -183,7 +187,7 @@ public:
 
 
         ByteVector Checksum(16, 0x00);
-
+        #pragma omp parallel for reduction(xorReduction:Checksum)
         for (int i = 0; i < m; i++) {
             Checksum = xorF(Checksum, M[i]);
         }
