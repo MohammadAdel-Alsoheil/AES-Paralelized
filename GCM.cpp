@@ -16,7 +16,7 @@ private:
     ByteVector IV;
     ByteVector AAD;
 
-    void prepareCounter(ByteVector &counter, const ByteVector &IV) {
+    void prepareCounter(ByteVector& counter, const ByteVector& IV) {
         // If IV is 96 bits, append 0x00000001 to form J0
         if (IV.size() == 12) {
             counter = IV;
@@ -30,9 +30,9 @@ private:
     }
 
 
-    void incrementCounter(ByteVector &counter) {
-        for (int i = 15; i >= 12; --i) {
-            // Last 4 bytes represent the counter
+
+    void incrementCounter(ByteVector& counter) {
+        for (int i = 15; i >= 12; --i) { // Last 4 bytes represent the counter
             if (++counter[i] != 0) {
                 break; // Stop incrementing if no overflow
             }
@@ -40,12 +40,12 @@ private:
     }
 
 
-    vector<ByteVector> GCTR(ByteVector ICB, ByteVector val) {
+    vector<ByteVector> GCTR(ByteVector ICB, ByteVector val){
         AES aes(key);
         ByteVector CB = ICB;
-        vector<ByteVector> X = nest(val, 16);
+        vector<ByteVector> X = nest(val,16);
         vector<ByteVector> res;
-        for (int i = 0; i < X.size(); ++i) {
+        for(int i = 0;i<X.size();++i){
             ByteVector Y;
             Y = xorF(aes.encrypt(CB), X[i]);
             incrementCounter(CB);
@@ -53,15 +53,41 @@ private:
         }
 
         return res;
+
+    }
+    ByteVector gf128Power(const ByteVector &H, int power) {
+        // Compute H^power in GF(2^128)
+        ByteVector result(16, 0x00); // Identity element: all zeros
+        result[15] = 0x01;          // Set least significant byte to 1 (H^0 = 1)
+
+        if (power == 0) {
+            return result;          // Return H^0 = 1
+        }
+
+        ByteVector currentH = H;    // Start with H
+        for (int i = 1; i <power; ++i) {
+            currentH = Ghash::gf128Multiply(currentH, H);
+        }
+        return currentH;
     }
 
-    ByteVector GHASH(ByteVector val, ByteVector H) {
-        ByteVector Y0 = ByteVector(16, 0x00);
+    ByteVector GHASH(const ByteVector &val, const ByteVector &H) {
+        // Break input into 16-byte blocks
         vector<ByteVector> X = nest(val, 16);
-        for (int i = 0; i < X.size(); ++i) {
-            Y0 = Ghash::gf128Multiply(xorF(Y0, X[i]), H);
+
+        // Initialize the tag (Y0 = 0)
+        ByteVector tag(16, 0x00);
+
+        for (int i = 0; i <=X.size(); ++i) { // Process from left to right
+            // Multiply the current block by the current power of H
+            ByteVector term =  Ghash::gf128Multiply(X[i], gf128Power(H,i));
+
+            // XOR the result into the tag
+            tag = xorF(tag, term);
+
         }
-        return Y0;
+        cout << Utils::bytesToHex(tag)<< endl;
+        return tag; // Return the final computed tag
     }
 
     ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
@@ -90,7 +116,6 @@ private:
         ByteVector lenC64 = encodeLength(sizeOfC);
 
         res.insert(res.end(), lenC64.begin(), lenC64.end());
-
 
         return res;
     }
@@ -240,6 +265,7 @@ int main(){
     cout << "Added Tag: " + bytesToHex(res.second) << "\n";
     std::chrono::duration<double> elapsed_time = end_time - start_time;
 
-    cout << "Elapsed Time: " << elapsed_time.count() << " seconds" << std::endl;
+    // Print result
+    std::cout << "Elapsed Time: " << elapsed_time.count() << " seconds" << std::endl;
     return 0;
 }
