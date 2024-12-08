@@ -13,7 +13,7 @@ using ByteVector= vector<unsigned char>;
 
 namespace  Utils {
     string bytesToHex(const ByteVector& byteVector);
-    ByteVector xorF(const ByteVector &A, const ByteVector &B, int flag = 1);
+    ByteVector xorF(const ByteVector &A, const ByteVector &B);
     vector<ByteVector> nest(const ByteVector& plainText, int size);
     ByteVector flatten(const vector<ByteVector>& C);
 };

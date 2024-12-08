@@ -206,3 +206,102 @@ __global__ void GCTRKernel(const uint8_t* ICB, const uint8_t* val, int numAESBlo
     }
 }
 
+__global__ void GHASHKernel( uint8_t *H, uint8_t *val,int Valsize, int increment ,uint8_t *result) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    int start = idx*increment;
+    int end = start + increment < Valsize? start + increment : Valsize;
+
+    if (start < Valsize) {
+        uint8_t partialResults[16] = {0};
+        uint8_t intermediate[16];
+        uint8_t intermediate2[16];
+        int blockSize =(Valsize + 15) / 16;
+
+        for (int i = start; i < end; ++i) {
+            gf128Power(H,  blockSize- i, intermediate);
+            gf128Multiply(&val[i*16],intermediate,intermediate2);
+
+            for (int j = 0; j < 16; ++j) {
+                partialResults[j] = partialResults[j] ^ intermediate2[j];
+            }
+        }
+
+        // Store the result
+        for (int i = 0; i < 16; ++i) {
+            result[i] ^= partialResults[i];
+        }
+    }
+}
+
+__device__ void gf128Multiply(uint8_t *X, uint8_t *Y, uint8_t *result) {
+
+    uint8_t Z0[16] = {0};
+    uint8_t V0[16];
+    uint8_t  R[16] =  {0xe1,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+    for (int i = 0; i < 16; ++i) {
+        V0[i] = Y[i];
+    }
+
+    // Iterate over all 128 bits
+    for (int i = 0; i < 128; ++i) {
+        // If the i-th bit of X is set, XOR Z0 with V0
+        if ((X[i / 8] >> (7 - (i % 8))) & 1) {
+            for (int j = 0; j < 16; ++j) {
+                Z0[j] ^= V0[j];
+            }
+        }
+
+        // Check the least significant bit of V0
+        bool lsb = (V0[15] & 1) != 0;
+
+        // Right shift V0
+        for (int j = 15; j > 0; --j) {
+            V0[j] = (V0[j] >> 1) | ((V0[j - 1] & 1) << 7);
+        }
+        V0[0] >>= 1;
+
+        // If lsb is set, XOR V0 with R
+        if (lsb) {
+            for (int j = 0; j < 16; ++j) {
+                V0[j] ^= R[j];
+            }
+        }
+    }
+
+    // Copy Z0 into the result
+    for (int i = 0; i < 16; ++i) {
+        result[i] = Z0[i];
+    }
+}
+
+__device__ void gf128Power(uint8_t *H, int power, uint8_t *result) {
+    // Compute H^power in GF(2^128)
+    uint8_t ComputedResult[] = {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x01}; // Identity element: all zeros
+    // Set least significant byte to 1 (H^0 = 1)
+
+    if (power == 0) {
+        for (int i = 0; i < 16; ++i) {
+            result[i] = ComputedResult[i];
+        }
+        return;
+    }
+
+    // Initialize result with H (H^1 = H)
+    for (int i = 0; i < 16; ++i) {
+        ComputedResult[i] = H[i];
+    }
+
+    // Multiply H with itself power-1 times
+    uint8_t intermediateResult[16];
+    for (int i = 1; i < power; ++i) {
+        gf128Multiply(ComputedResult, H, intermediateResult);
+        for (int j = 0; j < 16; ++j) {
+            ComputedResult[j] = intermediateResult[j];
+        }
+    }
+
+    // Copy final result
+    for (int i = 0; i < 16; ++i) {
+        result[i] = ComputedResult[i];
+    }
+}

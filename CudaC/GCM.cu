@@ -40,15 +40,6 @@ private:
     }
 
 
-    ByteVector GHASH(ByteVector val, ByteVector H) {
-        ByteVector Y0 = ByteVector(16, 0x00);
-        vector<ByteVector> X = Utils::nest(val, 16);
-        for (int i = 0; i < X.size(); ++i) {
-            Y0 = Ghash::gf128Multiply(Utils::xorF(Y0, X[i]), H);
-        }
-        return Y0;
-    }
-
     ByteVector encodeLength(uint64_t len) {
         ByteVector encoded(8, 0);
         for (int i = 7; i >= 0; --i) {
@@ -153,19 +144,19 @@ public:
         int v = (128 * ceil((double) sizeOfAADinBits / 128)) - sizeOfAADinBits;
 
 
-        // Pad AAD and ciphertext
-        ByteVector Hv;
-        for (int i = 0; i < 16; ++i) {
-            Hv.push_back(H[i]);
-        }
+        int increment = 32;
         ByteVector padded = padC(encryptedText, u, v, sizeOfCinBits, sizeOfAADinBits); //correct // checked
-
-        ByteVector S = GHASH(padded, Hv);
-
-
+        uint8_t *padded_d;
         uint8_t *d_S;
+        uint8_t *d_H;
         cudaMalloc(&d_S, 16);
-        cudaMemcpy(d_S, S.data(), 16, cudaMemcpyHostToDevice);
+        cudaMalloc(&d_H, 16);
+        cudaMalloc(&padded_d, padded.size());
+        cudaMemset(d_S, 0, 16);
+        cudaMemcpy(d_H,H, 16, cudaMemcpyHostToDevice);
+        cudaMemcpy(padded_d, padded.data(), padded.size(),cudaMemcpyHostToDevice);
+        GHASHKernel<<<blocksPerGrid,threadsPerBlock>>>(d_H,padded_d,padded.size(),increment,d_S);
+
 
         // Launch GCTR kernel for tag generation
         prepareCounter(ICB, IV);
@@ -183,6 +174,7 @@ public:
         cudaFree(d_key);
         cudaFree(d_roundkeys);
         cudaFree(d_S);
+        cudaFree(padded_d);
 
 
         return std::make_pair(encryptedText, T);
@@ -263,14 +255,19 @@ public:
             encryptedText.push_back(cipherText[i]);
         }
 
+        int increment = 32;
         ByteVector padded = padC(encryptedText, u, v, sizeOfCinBits, sizeOfAADinBits); //correct // checked
-
-        ByteVector S = GHASH(padded, Hv);
-
-
+        uint8_t *padded_d;
         uint8_t *d_S;
+        uint8_t *d_H;
         cudaMalloc(&d_S, 16);
-        cudaMemcpy(d_S, S.data(), 16, cudaMemcpyHostToDevice);
+        cudaMalloc(&d_H, 16);
+        cudaMalloc(&padded_d, padded.size());
+        cudaMemset(d_S, 0, 16);
+        cudaMemcpy(d_H,H, 16, cudaMemcpyHostToDevice);
+        cudaMemcpy(padded_d, padded.data(), padded.size(),cudaMemcpyHostToDevice);
+        GHASHKernel<<<blocksPerGrid,threadsPerBlock>>>(d_H,padded_d,padded.size(),increment,d_S);
+
 
         // Launch GCTR kernel for tag generation
         prepareCounter(ICB, IV);
@@ -312,8 +309,8 @@ int main() {
     };
 
     // P (Plaintext, 63 bytes)
-    uint8_t P[50000];
-    for(int i =0;i<50000;i++){
+    uint8_t P[2000000];
+    for(int i =0;i<2000000;i++){
         P[i] = 0x00;
     }
 
@@ -350,12 +347,12 @@ int main() {
         plainText.push_back(P[i]);
     }
     auto startEnc = high_resolution_clock::now(); // start time
-    cout << "Plaintext: " << Utils::bytesToHex(plainText) << endl;
+    //cout << "Plaintext: " << Utils::bytesToHex(plainText) << endl;
     pair<ByteVector, ByteVector> ciphertext = gcm.encrypt(Key, IV, A, Asize, P, Psize);
     auto endEnc = high_resolution_clock::now(); // end time
     auto durationEnc = duration_cast<microseconds>(endEnc - startEnc).count();
-    std::cout << "CipherText: " << Utils::bytesToHex(ciphertext.first) << std::endl;
-    std::cout << "Tag: " << Utils::bytesToHex(ciphertext.second) << std::endl;
+    //std::cout << "CipherText: " << Utils::bytesToHex(ciphertext.first) << std::endl;
+    //std::cout << "Tag: " << Utils::bytesToHex(ciphertext.second) << std::endl;
     std::cout << "Encryption of a " + std::to_string(Psize) + " bytes took "
             + std::to_string(durationEnc) + " microseconds" << std::endl;
     auto startDec = high_resolution_clock::now(); // start time
@@ -363,9 +360,10 @@ int main() {
                                         ciphertext.second);
     auto endDec = high_resolution_clock::now(); // end time
     auto durationDec = duration_cast<microseconds>(endDec - startDec).count();
-    cout << "Decrypted Text: " + Utils::bytesToHex(deciphered) << "\n";
+    //cout << "Decrypted Text: " + Utils::bytesToHex(deciphered) << "\n";
     std::cout << "Decryption of a " + std::to_string(ciphertext.first.size()) + " bytes took "
             + std::to_string(durationDec) + " microseconds" << std::endl;
 
     return 0;
 }
+
