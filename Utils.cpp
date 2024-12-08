@@ -8,7 +8,6 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
-#include "AES.cpp"
 using namespace std;
 
 namespace Utils{
@@ -21,10 +20,13 @@ namespace Utils{
     }
 
     ByteVector xorF(const ByteVector &A, const ByteVector &B) {
-        ByteVector C(A.size());
-        transform(A.begin(), A.end(), B.begin(), C.begin(), [](unsigned char a, unsigned char b) {
-            return a ^ b;
-        });
+        size_t maxLength = std::max(A.size(), B.size());
+        ByteVector C(maxLength);
+        for (size_t i = 0; i < maxLength; ++i) {
+            unsigned char a = (i < A.size()) ? A[i] : 0;
+            unsigned char b = (i < B.size()) ? B[i] : 0;
+            C[i] = a ^ b;
+        }
         return C;
     }
 
