@@ -53,41 +53,15 @@ private:
         }
 
         return res;
-
-    }
-    ByteVector gf128Power(const ByteVector &H, int power) {
-        // Compute H^power in GF(2^128)
-        ByteVector result(16, 0x00); // Identity element: all zeros
-        result[15] = 0x01;          // Set least significant byte to 1 (H^0 = 1)
-
-        if (power == 0) {
-            return result;          // Return H^0 = 1
-        }
-
-        ByteVector currentH = H;    // Start with H
-        for (int i = 1; i <power; ++i) {
-            currentH = Ghash::gf128Multiply(currentH, H);
-        }
-        return currentH;
     }
 
-    ByteVector GHASH(const ByteVector &val, const ByteVector &H) {
-        // Break input into 16-byte blocks
-        vector<ByteVector> X = nest(val, 16);
-
-        // Initialize the tag (Y0 = 0)
-        ByteVector tag(16, 0x00);
-
-        for (int i = 0; i <X.size(); ++i) { // Process from left to right
-            // Multiply the current block by the current power of H
-            ByteVector term =  Ghash::gf128Multiply(X[i], gf128Power(H,X.size()-i));
-
-            // XOR the result into the tag
-            tag = xorF(tag, term);
-
+    ByteVector GHASH(ByteVector val, ByteVector H){
+        ByteVector Y0 = ByteVector(16, 0x00);
+        vector<ByteVector> X = nest(val,16);
+        for(int i = 0;i<X.size();++i){
+            Y0 = Ghash::gf128Multiply(xorF(Y0, X[i]), H);
         }
-        cout << Utils::bytesToHex(tag)<< endl;
-        return tag; // Return the final computed tag
+        return Y0;
     }
 
     ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
@@ -232,17 +206,11 @@ int main(){
             0x1A, 0x2C, 0xAA, 0x0F, 0xFE, 0x04, 0x07, 0xE5
     };
     // P (Plaintext, 64 bytes)
-    ByteVector P = {
-            0x08, 0x00, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
-            0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C,
-            0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x3B, 0x3C,
-            0x3D, 0x3E, 0x3F, 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x00, 0x08
+    ByteVector P;
 
-    };
-
-//    for(int i =0;i<10;i++){
-//        P.push_back(0x00);
-//    }
+    for(int i =0;i<50000;i++){
+        P.push_back(0x00);
+    }
 
     // IV (Initialization Vector, 12 bytes)
     ByteVector IV = {
