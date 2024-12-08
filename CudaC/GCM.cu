@@ -1,7 +1,7 @@
 #include <iostream>
 #include <iomanip>
 #include <vector>
-#include "kernels.h"
+#include "kernelsGCM.h"
 #include "aes.h"
 #include <cstdint>
 #include <cmath>

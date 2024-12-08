@@ -4,7 +4,7 @@
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
 #include <iostream>
-#include "kernels.h"
+#include "kernelsGCM.h"
 
 
 
