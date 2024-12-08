@@ -99,3 +99,13 @@
 1037	1265	7553918193147933	AES_Paralelized.exe	8713657db59d284f
 4	1155	7553918313367574	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
 1156	1376	7553918315548915	AES_Paralelized.exe	8713657db59d284f
+78	298	7553940103337781	CMakeFiles/AES_Paralelized.dir/GCM_OpenMP.cpp.obj	7f99cd992d38a9ff
+15	1186	7553940111840949	CMakeFiles/AES_Paralelized.dir/aes_stages/SubBytes.cpp.obj	76fb42159deaf3ed
+22	1260	7553940112856274	CMakeFiles/AES_Paralelized.dir/aes_stages/ShiftRows.cpp.obj	8a61144dd9db5f25
+48	1268	7553940112906815	CMakeFiles/AES_Paralelized.dir/aes_stages/MixColumns.cpp.obj	300fabbae70016fb
+38	1324	7553940113660763	CMakeFiles/AES_Paralelized.dir/aes_stages/KeyExpansion.cpp.obj	7471a90002bb7351
+67	1592	7553940116366552	CMakeFiles/AES_Paralelized.dir/Ghash.cpp.obj	59b0f00a9eb48c0a
+7	1997	7553940120440567	CMakeFiles/AES_Paralelized.dir/AES.cpp.obj	cba2afcd13593ba
+30	2381	7553940124278383	CMakeFiles/AES_Paralelized.dir/Utils.cpp.obj	e5b720f47df68541
+57	2836	7553940128807574	CMakeFiles/AES_Paralelized.dir/GCM.cpp.obj	2a01106800beee84
+2836	3212	7553940132526906	AES_Paralelized.exe	8713657db59d284f

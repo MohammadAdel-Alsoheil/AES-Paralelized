@@ -42,7 +42,7 @@ private:
         }
     }
 
-    vector<ByteVector> GCTR(ByteVector ICB, ByteVector val) {
+    vector<ByteVector> GCTR(const ByteVector& ICB, const ByteVector& val) {
         vector<ByteVector> X = nest(val, 16);
         vector<ByteVector> res(X.size());
 
@@ -67,68 +67,54 @@ private:
 
         return res;
     }
-    void computeGF128Power(const ByteVector &H, int size) {
+    void computeGF128Power(const ByteVector&H,int size){
         this->gf128Res.resize(size);
-        this->gf128Res[0] = H;
-
-        // Precompute powers of 2: H, H^2, H^4, ...
-        std::vector<ByteVector> powersOfTwo;
-        powersOfTwo.push_back(H);
-        for (int i = 1; (1 << i) < size; ++i) {
-            powersOfTwo.push_back(Ghash::gf128Multiply(powersOfTwo.back(), powersOfTwo.back()));
-        }
-
-        // Compute all powers using precomputed powers of 2
-#pragma omp parallel for
-        for (int i = 1; i < size; ++i) {
-            ByteVector result = powersOfTwo[0]; // Start with H
-            for (int j = 1; (1 << j) <= i; ++j) {
-                if (i & (1 << j)) {
-                    result = Ghash::gf128Multiply(result, powersOfTwo[j]);
-                }
-            }
-            this->gf128Res[i] = result;
+        this->gf128Res[0]=H;
+        for(int i =1;i<size;i++){
+            this->gf128Res[i] = Ghash::gf128Multiply(this->gf128Res[i-1],H);
         }
     }
 
-#pragma omp declare reduction(xorReduction : ByteVector : \
-    omp_out = xorF(omp_out, omp_in)) initializer(omp_priv = ByteVector(16, 0x00))
 
-// GHASH function with OpenMP reduction
     ByteVector GHASH(const ByteVector &val, const ByteVector &H) {
-        // Split input into 16-byte blocks
+        // Break input into 16-byte blocks
         vector<ByteVector> X = nest(val, 16);
         int numBlocks = X.size();
-        auto start_time = std::chrono::high_resolution_clock::now();
 
-
+        // Precompute powers of H
         this->computeGF128Power(H, numBlocks);
-        auto end_time = std::chrono::high_resolution_clock::now();
 
-        std::chrono::duration<double> elapsed_time = end_time - start_time;
-
-        std::cout << "Elapsed Time: " << elapsed_time.count() << " seconds" << std::endl;
-
-        // Initialize tag for reduction
+        // Initialize the tag (Y0 = 0)
         ByteVector tag(16, 0x00);
 
-        // Parallel computation of GHASH
-#pragma omp parallel for reduction(xorReduction : tag)
-        for (int i = 0; i < numBlocks; ++i) {
-            // Fetch precomputed power of H
-            ByteVector hPower = this->gf128Res[numBlocks - i - 1];
+        // Parallel processing with OpenMP
+#pragma omp parallel shared(gf128Res, X)
+        {
+            // Thread-local partial tag
+            ByteVector localTag(16, 0x00);
 
-            // Compute GF(2^128) multiplication
-            ByteVector term = Ghash::gf128Multiply(X[i], hPower);
+#pragma omp for
+            for (int i = 0; i < numBlocks; ++i) {
+                // Access precomputed power of H
+                ByteVector hPower = this->gf128Res[numBlocks - i - 1]; // Correct index
 
-            // XOR into the tag (handled by OpenMP reduction)
-            tag = xorF(tag, term);
+                // Multiply the current block by the corresponding power of H
+                ByteVector term = Ghash::gf128Multiply(X[i], hPower);
+
+                // XOR into the thread-local tag
+                localTag = xorF(localTag, term);
+            }
+
+            // Combine thread-local results into the global tag
+#pragma omp critical
+            {
+                tag = xorF(tag, localTag);
+            }
         }
 
-        // Return the computed tag
-        return tag;
+        return tag; // Return the final computed tag
     }
-    ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
+    ByteVector padC(const ByteVector& C, int u, int v, int sizeOfC, int sizeOfA) {
         ByteVector res;
 
         res.insert(res.end(), AAD.begin(), AAD.end());
@@ -207,7 +193,7 @@ public:
 };
 
 int main(){
-    omp_set_num_threads(64);
+    omp_set_num_threads(12);
     // Key (16 bytes)
     ByteVector Key = {
             0x4C, 0x97, 0x3D, 0xBC, 0x73, 0x64, 0x62, 0x16,
@@ -217,7 +203,7 @@ int main(){
     };
     // P (Plaintext, 64 bytes)
     ByteVector P ;
-    for(int i =0;i<100;i++){
+    for(int i =0;i<1000000;i++){
         P.push_back(0x00);
     }
 
