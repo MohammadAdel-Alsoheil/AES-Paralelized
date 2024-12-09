@@ -292,7 +292,7 @@ public:
         cudaFree(d_key);
         cudaFree(d_roundkeys);
         cudaFree(d_S);
-
+        cudaFree(padded_d);
 
         return plainText;
     }
@@ -308,9 +308,9 @@ int main() {
         0x1A, 0x2C, 0xAA, 0x0F, 0xFE, 0x04, 0x07, 0xE5
     };
 
-    // P (Plaintext, 63 bytes)
-    uint8_t P[2000000];
-    for(int i =0;i<2000000;i++){
+    //P (Plaintext, 63 bytes)
+    uint8_t P[5000000];
+    for(int i =0;i<5000000;i++){
         P[i] = 0x00;
     }
 
@@ -354,7 +354,7 @@ int main() {
     //std::cout << "CipherText: " << Utils::bytesToHex(ciphertext.first) << std::endl;
     //std::cout << "Tag: " << Utils::bytesToHex(ciphertext.second) << std::endl;
     std::cout << "Encryption of a " + std::to_string(Psize) + " bytes took "
-            + std::to_string(durationEnc) + " microseconds" << std::endl;
+            + std::to_string((double)durationEnc/1000000) + "seconds" << std::endl;
     auto startDec = high_resolution_clock::now(); // start time
     ByteVector deciphered = gcm.decrypt(Key, IV, A, A.size(), ciphertext.first.data(), ciphertext.first.size(),
                                         ciphertext.second);
@@ -362,7 +362,7 @@ int main() {
     auto durationDec = duration_cast<microseconds>(endDec - startDec).count();
     //cout << "Decrypted Text: " + Utils::bytesToHex(deciphered) << "\n";
     std::cout << "Decryption of a " + std::to_string(ciphertext.first.size()) + " bytes took "
-            + std::to_string(durationDec) + " microseconds" << std::endl;
+            + std::to_string((double)durationDec/1000000) + "seconds" << std::endl;
 
     return 0;
 }

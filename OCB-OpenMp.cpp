@@ -11,6 +11,7 @@
 #include <bitset>
 #include "AES.cpp"
 #include "Ghash.h"
+#include <chrono>
 using namespace Utils;
 
 
@@ -105,10 +106,10 @@ public:
         greyCodes[0] = L;
         Z[0] = xorF(greyCodes[0], R);
 
-        #pragma omp parallel for
+
         for (int i = 1; i < m; i++) {
-            greyCodes[i] = multGreyCode(greyCodes[i - 1], L, i);
-            Z[i] = xorF(greyCodes[i], R);
+                greyCodes[i] = multGreyCode(greyCodes[i - 1], L, i);
+                Z[i] = xorF(greyCodes[i], R);
         }
 
         #pragma omp parallel for
@@ -127,9 +128,10 @@ public:
 
         // Compute the Checksum
         ByteVector Checksum(16, 0x00);
-        #pragma omp parallel for reduction(xorReduction:Checksum)
+#pragma omp parallel for reduction( xorReduction: Checksum) schedule(static)
         for (int i = 0; i < m; i++) {
-            Checksum = xorF(Checksum, preparedM[i]);
+            ByteVector localChecksum = Checksum; // Make a thread-local copy
+            Checksum = xorF(Checksum, localChecksum);
         }
         Checksum = xorF(xorF(Checksum, Cm), Ym);
 
@@ -167,11 +169,12 @@ public:
         vector<ByteVector> Z(m);
         greyCodes[0]=L;
         Z[0] = xorF(greyCodes[0], R);
-        #pragma omp parallel for
+
         for (int i = 1; i < m; i++) {
             greyCodes[i] = multGreyCode(greyCodes[i - 1], L, i);
             Z[i] = xorF(greyCodes[i], R);
         }
+
         #pragma omp parallel for
         for (int i = 0; i < m - 1; i++) {
             M[i] = xorF(aes.decrypt(xorF(preparedC[i], Z[i]), key), Z[i]);
@@ -187,9 +190,12 @@ public:
 
 
         ByteVector Checksum(16, 0x00);
-        #pragma omp parallel for reduction(xorReduction:Checksum)
+
+        #pragma omp parallel for reduction( xorReduction: Checksum) schedule(static)
         for (int i = 0; i < m; i++) {
-            Checksum = xorF(Checksum, M[i]);
+            ByteVector localChecksum = Checksum; // Make a thread-local copy
+            Checksum = xorF(Checksum, localChecksum);
+
         }
         Checksum = xorF(xorF(Checksum, preparedC[m - 1]), Ym);
         // Generate the authentication tag
@@ -219,6 +225,10 @@ int main() {
         0x1A, 0x2C, 0xAA, 0x0F, 0xFE, 0x04, 0x07, 0xE5
     };
     // P (Plaintext, 64 bytes)
+//    ByteVector P;
+//    for (int i = 0; i < 500; i++) {
+//      P.push_back(0x00);
+//    }
     ByteVector P = {
         0x08, 0x00, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14,
         0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
@@ -237,11 +247,21 @@ int main() {
     };
 
     cout << "P: " << Utils::bytesToHex(P) << endl;
+    auto startEnc = chrono::high_resolution_clock::now();
     pair<ByteVector, ByteVector> cipher = ocb.encrypt(Key, Nonce, P);
+    auto endEnc = chrono::high_resolution_clock::now();
+    auto durationEnc = chrono::duration_cast<chrono::microseconds>(endEnc - startEnc).count();
     cout << "Cipher Text is: " << Utils::bytesToHex(cipher.first) << endl;
     cout << "Tag is: " << Utils::bytesToHex(cipher.second) << endl;
+    auto startDec = chrono::high_resolution_clock::now();
     ByteVector M = ocb.decrypt(Key, Nonce, cipher.first, cipher.second);
+    auto endDec = chrono::high_resolution_clock::now();
+    auto durationDec = chrono::duration_cast<chrono::microseconds>(endDec - startDec).count();
     cout << "Deciphered Text is: " << Utils::bytesToHex(M) << endl;
+    std::cout << "Encryption of a " + std::to_string(P.size()) + " bytes took "
+            + std::to_string((double)durationEnc/1000000) + " seconds" << std::endl;
+    std::cout << "Decryption of a " + std::to_string(cipher.first.size()) + " bytes took "
+            + std::to_string((double)durationDec/1000000) + " seconds" << std::endl;
 
 
     return 0;
