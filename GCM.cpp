@@ -6,6 +6,7 @@
 #include "AES.cpp"
 #include "Ghash.h"
 #include <chrono>
+#include <immintrin.h>
 
 using namespace Utils;
 
@@ -55,40 +56,127 @@ private:
 
         return res;
     }
+    void clmul_x86(uint8_t r[16], const uint8_t a[16], const uint8_t b[16])
+    {
+        const __m128i MASK = _mm_set_epi8(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15);
 
-    void computeGF128Power(const ByteVector&H,int size){
-        this->gf128Res.resize(size);
-        this->gf128Res[0]=H;
-        for(int i =1;i<size;i++){
-            this->gf128Res[i] = Ghash::gf128Multiply(this->gf128Res[i-1],H);
+        __m128i a1 = _mm_loadu_si128((const __m128i*)a);
+        __m128i b1 = _mm_loadu_si128((const __m128i*)b);
+
+        a1 = _mm_shuffle_epi8(a1, MASK);
+        b1 = _mm_shuffle_epi8(b1, MASK);
+
+        __m128i T0, T1, T2, T3, T4, T5;
+
+        T0 = _mm_clmulepi64_si128(a1, b1, 0x00);
+        T1 = _mm_clmulepi64_si128(a1, b1, 0x01);
+        T2 = _mm_clmulepi64_si128(a1, b1, 0x10);
+        T3 = _mm_clmulepi64_si128(a1, b1, 0x11);
+
+        T1 = _mm_xor_si128(T1, T2);
+        T2 = _mm_slli_si128(T1, 8);
+        T1 = _mm_srli_si128(T1, 8);
+        T0 = _mm_xor_si128(T0, T2);
+        T3 = _mm_xor_si128(T3, T1);
+
+        T4 = _mm_srli_epi32(T0, 31);
+        T0 = _mm_slli_epi32(T0, 1);
+
+        T5 = _mm_srli_epi32(T3, 31);
+        T3 = _mm_slli_epi32(T3, 1);
+
+        T2 = _mm_srli_si128(T4, 12);
+        T5 = _mm_slli_si128(T5, 4);
+        T4 = _mm_slli_si128(T4, 4);
+        T0 = _mm_or_si128(T0, T4);
+        T3 = _mm_or_si128(T3, T5);
+        T3 = _mm_or_si128(T3, T2);
+
+        T4 = _mm_slli_epi32(T0, 31);
+        T5 = _mm_slli_epi32(T0, 30);
+        T2 = _mm_slli_epi32(T0, 25);
+
+        T4 = _mm_xor_si128(T4, T5);
+        T4 = _mm_xor_si128(T4, T2);
+        T5 = _mm_srli_si128(T4, 4);
+        T3 = _mm_xor_si128(T3, T5);
+        T4 = _mm_slli_si128(T4, 12);
+        T0 = _mm_xor_si128(T0, T4);
+        T3 = _mm_xor_si128(T3, T0);
+
+        T4 = _mm_srli_epi32(T0, 1);
+        T1 = _mm_srli_epi32(T0, 2);
+        T2 = _mm_srli_epi32(T0, 7);
+        T3 = _mm_xor_si128(T3, T1);
+        T3 = _mm_xor_si128(T3, T2);
+        T3 = _mm_xor_si128(T3, T4);
+
+        T3 = _mm_shuffle_epi8(T3, MASK);
+
+        _mm_storeu_si128((__m128i*)r, T3);
+    }
+    ByteVector gf128Multiply(const ByteVector &X, const ByteVector &H) {
+        if (X.size() != 16 || H.size() != 16) {
+            throw std::runtime_error("gf128Multiply: Input vectors must be 16 bytes.");
+        }
+
+        ByteVector result(16);
+        clmul_x86(result.data(), X.data(), H.data());
+        return result;
+    }
+
+
+    void computeGF128Power(const ByteVector &H, int size, std::vector<ByteVector> &gf128Res) {
+        gf128Res.resize(size);
+        gf128Res[0] = H;
+        ByteVector current = H;
+        for (int i = 1; i < size; ++i) {
+            current = gf128Multiply(current, H);
+            gf128Res[i] = current;
         }
     }
 
-    ByteVector GHASH(const ByteVector &val, const ByteVector &H) {
-        // Break input into 16-byte blocks
-        std::vector<ByteVector> X = nest(val, 16);
-        int numBlocks = X.size();
+    ByteVector GHASH(const ByteVector &X, const ByteVector &H) {
+        // nest into 16-byte blocks
+        auto nest = [](const ByteVector &data, size_t blockSize) {
+            std::vector<ByteVector> blocks;
+            for (size_t i = 0; i < data.size(); i += blockSize) {
+                ByteVector block(16, 0);
+                size_t len = std::min(blockSize, data.size() - i);
+                for (size_t j = 0; j < len; j++) {
+                    block[j] = data[i + j];
+                }
+                blocks.push_back(block);
+            }
+            return blocks;
+        };
 
-        // Precompute powers of H
-        this->computeGF128Power(H, numBlocks);
+        // XOR helper
+        auto xorF = [](const ByteVector &a, const ByteVector &b) {
+            ByteVector res(16);
+            for (int i = 0; i < 16; ++i) {
+                res[i] = a[i] ^ b[i];
+            }
+            return res;
+        };
 
-        // Initialize the tag (Y0 = 0)
+        std::vector<ByteVector> blocks = nest(X, 16);
+        int numBlocks = (int)blocks.size();
+
+        std::vector<ByteVector> gf128Res;
+        computeGF128Power(H, numBlocks, gf128Res);
+
         ByteVector tag(16, 0x00);
 
-        // Parallel processing with OpenMP using the custom reduction
         for (int i = 0; i < numBlocks; ++i) {
-            // Access precomputed power of H
-            ByteVector hPower = this->gf128Res[numBlocks - i - 1]; // Correct index
-
-            // Multiply the current block by the corresponding power of H
-            ByteVector term = Ghash::gf128Multiply(X[i], hPower);
-
-            // XOR into the reduction variable 'tag'
+            ByteVector hPower = gf128Res[numBlocks - i - 1];
+            ByteVector term = gf128Multiply(blocks[i], hPower);
             tag = xorF(tag, term);
         }
 
-        return tag; // Return the final computed tag
+        return tag;
     }
+
 
     ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
         ByteVector res;
@@ -234,7 +322,7 @@ int main(){
     // P (Plaintext, 64 bytes)
     ByteVector P;
 
-    for(int i =0;i<1000;i++){
+    for(int i =0;i<1000000;i++){
         P.push_back(0x00);
     }
 
@@ -256,8 +344,8 @@ int main(){
     auto end_time = std::chrono::high_resolution_clock::now();
 
     ByteVector deciphered = gcm.decrypt(Key,IV,A,res.first,res.second);
-    cout << "Decrypted Text: " + bytesToHex(deciphered) << "\n";
-    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
+//    cout << "Decrypted Text: " + bytesToHex(deciphered) << "\n";
+//    cout << "Cipher Text: " + bytesToHex(res.first) << "\n";
     cout << "Added Tag: " + bytesToHex(res.second) << "\n";
     std::chrono::duration<double> elapsed_time = end_time - start_time;
 
