@@ -96,9 +96,9 @@ public:
         int m = (M.size() + 15) / 16;
 
         //prepare L and R
-        AES aes;
-        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16), key);
-        ByteVector R = aes.encrypt(xorF(Nonce, L), key);
+        AES aes(key);
+        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16));
+        ByteVector R = aes.encrypt(xorF(Nonce, L));
 
         vector<ByteVector> greyCodes(m);
         vector<ByteVector> C(m); // cipherText
@@ -114,11 +114,11 @@ public:
 
         #pragma omp parallel for
         for (int i = 0; i < m - 1; i++) {
-            C[i] = xorF(aes.encrypt(xorF(preparedM[i], Z[i]), key), Z[i]);
+            C[i] = xorF(aes.encrypt(xorF(preparedM[i], Z[i])), Z[i]);
         }
 
         ByteVector Xm = xorF(xorF(encodeLength(preparedM[m - 1].size() * 8), multByInverseX(L)), Z[m - 1]);
-        const ByteVector Ym = aes.encrypt(Xm, key);
+        const ByteVector Ym = aes.encrypt(Xm);
         ByteVector Cm; // Final ciphertext block
         for (int i = 0; i < preparedM[m - 1].size(); i++) {
             Cm.push_back(preparedM[m - 1][i] ^ Ym[i]);
@@ -136,7 +136,7 @@ public:
         Checksum = xorF(xorF(Checksum, Cm), Ym);
 
         // Generate the authentication tag
-        ByteVector T = aes.encrypt(xorF(Checksum, Z[m - 1]), key);
+        ByteVector T = aes.encrypt(xorF(Checksum, Z[m - 1]));
         T.resize(16); // Truncate to the desired tag length
 
         // Concatenate ciphertext blocks
@@ -160,9 +160,9 @@ public:
         vector<ByteVector> preparedC = DivideBlocks(C, 16);
         int m = (C.size() + 15) / 16;
 
-        AES aes;
-        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16), key);
-        ByteVector R = aes.encrypt(xorF(Nonce, L), key);
+        AES aes(key);
+        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16));
+        ByteVector R = aes.encrypt(xorF(Nonce, L));
 
         vector<ByteVector> greyCodes(m);
         vector<ByteVector> M(m); // cipherText
@@ -181,7 +181,7 @@ public:
         }
 
         ByteVector Xm = xorF(xorF(encodeLength(preparedC[m - 1].size() * 8), multByInverseX(L)), Z[m - 1]);
-        ByteVector Ym = aes.encrypt(Xm, key);
+        ByteVector Ym = aes.encrypt(Xm);
         ByteVector Mm;
         for (int i = 0; i < preparedC[m - 1].size(); i++) {
             Mm.push_back(preparedC[m - 1][i] ^ Ym[i]);
@@ -199,7 +199,7 @@ public:
         }
         Checksum = xorF(xorF(Checksum, preparedC[m - 1]), Ym);
         // Generate the authentication tag
-        ByteVector Tprime = aes.encrypt(xorF(Checksum, Z[m - 1]), key);
+        ByteVector Tprime = aes.encrypt(xorF(Checksum, Z[m - 1]));
         Tprime.resize(16); // Truncate to the desired tag length
 
 

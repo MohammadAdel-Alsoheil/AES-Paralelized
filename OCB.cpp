@@ -152,9 +152,9 @@ public:
         vector<ByteVector> preparedC = DivideBlocks(C, 16);
         int m = (C.size() + 15) / 16;
 
-        AES aes;
-        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16), key);
-        ByteVector R = aes.encrypt(xorF(Nonce, L), key);
+        AES aes(key);
+        ByteVector L = aes.encrypt(vector<unsigned char>(0x00, 16));
+        ByteVector R = aes.encrypt(xorF(Nonce, L));
 
         vector<ByteVector> M; // cipherText
         vector<ByteVector> Z;
@@ -170,7 +170,7 @@ public:
         }
 
         ByteVector Xm = xorF(xorF(encodeLength(preparedC[m - 1].size() * 8), multByInverseX(L)), Z[m - 1]);
-        ByteVector Ym = aes.encrypt(Xm, key);
+        ByteVector Ym = aes.encrypt(Xm);
         ByteVector Mm;
         for (int i = 0; i < preparedC[m - 1].size(); i++) {
             Mm.push_back(preparedC[m - 1][i] ^ Ym[i]);
@@ -183,7 +183,7 @@ public:
         }
         Checksum = xorF(xorF(Checksum, preparedC[m - 1]), Ym);
         // Generate the authentication tag
-        ByteVector Tprime = aes.encrypt(xorF(Checksum, Z[m - 1]), key);
+        ByteVector Tprime = aes.encrypt(xorF(Checksum, Z[m - 1]));
         Tprime.resize(16); // Truncate to the desired tag length
 
         // Concatenate ciphertext blocks
