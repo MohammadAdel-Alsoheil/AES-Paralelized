@@ -15,6 +15,7 @@ private:
     ByteVector key;
     ByteVector IV;
     ByteVector AAD;
+    vector<ByteVector> gf128Res;
 
     void prepareCounter(ByteVector& counter, const ByteVector& IV) {
         // If IV is 96 bits, append 0x00000001 to form J0
@@ -55,13 +56,38 @@ private:
         return res;
     }
 
-    ByteVector GHASH(ByteVector val, ByteVector H){
-        ByteVector Y0 = ByteVector(16, 0x00);
-        vector<ByteVector> X = nest(val,16);
-        for(int i = 0;i<X.size();++i){
-            Y0 = Ghash::gf128Multiply(xorF(Y0, X[i]), H);
+    void computeGF128Power(const ByteVector&H,int size){
+        this->gf128Res.resize(size);
+        this->gf128Res[0]=H;
+        for(int i =1;i<size;i++){
+            this->gf128Res[i] = Ghash::gf128Multiply(this->gf128Res[i-1],H);
         }
-        return Y0;
+    }
+
+    ByteVector GHASH(const ByteVector &val, const ByteVector &H) {
+        // Break input into 16-byte blocks
+        std::vector<ByteVector> X = nest(val, 16);
+        int numBlocks = X.size();
+
+        // Precompute powers of H
+        this->computeGF128Power(H, numBlocks);
+
+        // Initialize the tag (Y0 = 0)
+        ByteVector tag(16, 0x00);
+
+        // Parallel processing with OpenMP using the custom reduction
+        for (int i = 0; i < numBlocks; ++i) {
+            // Access precomputed power of H
+            ByteVector hPower = this->gf128Res[numBlocks - i - 1]; // Correct index
+
+            // Multiply the current block by the corresponding power of H
+            ByteVector term = Ghash::gf128Multiply(X[i], hPower);
+
+            // XOR into the reduction variable 'tag'
+            tag = xorF(tag, term);
+        }
+
+        return tag; // Return the final computed tag
     }
 
     ByteVector padC(ByteVector C, int u, int v, int sizeOfC, int sizeOfA) {
