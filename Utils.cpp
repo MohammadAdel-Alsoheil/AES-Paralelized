@@ -8,6 +8,7 @@
 #include <vector>
 #include <sstream>
 #include <iomanip>
+#include <emmintrin.h>
 using namespace std;
 
 namespace Utils{
@@ -52,6 +53,34 @@ namespace Utils{
 
         for (const auto& block : C) {
             result.insert(result.end(), block.begin(), block.end());
+        }
+
+        return result;
+    }
+
+    ByteVector xorF_SIMD(const ByteVector &a, const ByteVector &b) {
+        if (a.size() != b.size()) {
+            throw std::runtime_error("xorVectors: input vectors must have the same size");
+        }
+
+        ByteVector result(a.size());
+        size_t len = a.size();
+
+        // Process 16 bytes at a time
+        size_t blocks = len / 16;
+        size_t remainder = len % 16;
+
+        for (size_t i = 0; i < blocks; ++i) {
+            __m128i va = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&a[i*16]));
+            __m128i vb = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&b[i*16]));
+            __m128i vr = _mm_xor_si128(va, vb);
+            _mm_storeu_si128(reinterpret_cast<__m128i*>(&result[i*16]), vr);
+        }
+
+        // Handle remainder
+        size_t offset = blocks * 16;
+        for (size_t i = 0; i < remainder; ++i) {
+            result[offset + i] = static_cast<unsigned char>(a[offset + i] ^ b[offset + i]);
         }
 
         return result;

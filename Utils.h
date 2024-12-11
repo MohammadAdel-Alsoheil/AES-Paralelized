@@ -16,6 +16,7 @@ namespace  Utils {
     ByteVector xorF(const ByteVector &A, const ByteVector &B);
     vector<ByteVector> nest(const ByteVector& plainText, int size);
     ByteVector flatten(const vector<ByteVector>& C);
+    ByteVector xorF_SIMD(const ByteVector &a, const ByteVector &b);
 };
 
 
